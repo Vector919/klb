@@ -7,6 +7,8 @@
 #include <strings.h>
 #include <errno.h>
 
+#define BUFFER_LENGTH 256
+
 int initialize_server(int port) {
   int socket_fd;
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -40,39 +42,69 @@ int initialize_server(int port) {
 int main() {
   int server_socket = initialize_server(9002);
   int client_socket;
+  int upstream_socket;
+
   struct sockaddr_in cli_addr;
-  char buffer[256];
-  char upstream_buffer[256];
   socklen_t address_length = sizeof(cli_addr);
+
+  char buffer[BUFFER_LENGTH];
+  char upstream_buffer[BUFFER_LENGTH];
+  char response_buffer[BUFFER_LENGTH];
+
   struct sockaddr_in client_addr;
   client_addr.sin_family = AF_INET;
   client_addr.sin_addr.s_addr = INADDR_ANY;
   client_addr.sin_port = htons(8080);
 
-  int upstream_socket;
-  int br;
-  char response_buffer[255];
+  int upstream_bytes_read;
+  int client_bytes_read;
+  int current_buffer_size;
+
+  char* temp = NULL;
+  char* tc = NULL;
   while (1) {
     client_socket = accept(server_socket, (struct sockaddr *)&cli_addr, &address_length);
-    read(client_socket, buffer, 255);
-    printf("%s", buffer);
+
+    client_bytes_read = read(client_socket, buffer, BUFFER_LENGTH - 1);
+    current_buffer_size = BUFFER_LENGTH - 1;
+
+    while (client_bytes_read > 0) {
+      tc = malloc(sizeof(char) * (current_buffer_size * 2));
+      if (temp != NULL) {
+        strcat(tc, temp);
+      }
+      strcat(tc, buffer);
+      temp = tc;
+      bzero(buffer, BUFFER_LENGTH);
+      current_buffer_size = current_buffer_size * 2;
+      if (client_bytes_read >= BUFFER_LENGTH - 1) {
+        client_bytes_read = read(client_socket, buffer, BUFFER_LENGTH - 1);
+      } else {
+        client_bytes_read = 0;
+      }
+    }
+
+    printf("Request: === \n %s \n", temp);
+
     // buffer now contains client request
     upstream_socket = socket(AF_INET, SOCK_STREAM, 0);
     connect(upstream_socket, (struct sockaddr *) &client_addr, sizeof(client_addr));
-    write(upstream_socket, buffer, strlen(buffer));
+    write(upstream_socket, temp, strlen(temp));
 
     // now recive response
-    bzero(upstream_buffer, 256);
-    bzero(response_buffer, 256);
-    br = read(upstream_socket, upstream_buffer, 255);
-    while (br != 0) {
-      strncat(response_buffer, upstream_buffer, br);
-      br = read(upstream_socket, upstream_buffer, 255);
+    bzero(upstream_buffer, BUFFER_LENGTH);
+    bzero(response_buffer, BUFFER_LENGTH);
+
+    upstream_bytes_read = read(upstream_socket, upstream_buffer, BUFFER_LENGTH - 1);
+    while (upstream_bytes_read != 0) {
+      strncat(response_buffer, upstream_buffer, upstream_bytes_read);
+      upstream_bytes_read = read(upstream_socket, upstream_buffer, BUFFER_LENGTH - 1);
     }
-    printf("%s\n", response_buffer);
+
+    printf("Response: === \n %s \n", response_buffer);
 
     close(upstream_socket);
-    write(client_socket, response_buffer, 255);
+    write(client_socket, response_buffer, sizeof(response_buffer));
     close(client_socket);
   }
 
