@@ -52,7 +52,8 @@ char* read_all_bytes(int file_descriptor, int force_read) {
   bytes_read = read(file_descriptor, buffer, BUFFER_LENGTH - 1);
   current_buffer_size = BUFFER_LENGTH - 1;
   while (bytes_read > 0) {
-      temp = malloc(sizeof(char) * (current_buffer_size * 2));
+      temp = malloc(sizeof(char) * (current_buffer_size + bytes_read));
+      bzero(temp, sizeof(temp));
       if (data != NULL) {
         strcat(temp, data);
       }
@@ -60,7 +61,7 @@ char* read_all_bytes(int file_descriptor, int force_read) {
       data = temp;
 
       bzero(buffer, BUFFER_LENGTH);
-      current_buffer_size = current_buffer_size * 2;
+      current_buffer_size = current_buffer_size + bytes_read;
       if (bytes_read >= BUFFER_LENGTH - 1 || force_read == 1) {
         bytes_read = read(file_descriptor, buffer, BUFFER_LENGTH - 1);
       } else {
