@@ -79,14 +79,24 @@ int main() {
   struct sockaddr_in cli_addr;
   socklen_t address_length = sizeof(cli_addr);
 
-  struct sockaddr_in client_addr;
-  client_addr.sin_family = AF_INET;
-  client_addr.sin_addr.s_addr = INADDR_ANY;
-  client_addr.sin_port = htons(8080);
+  struct sockaddr_in upstream_address;
+  upstream_address.sin_family = AF_INET;
+  upstream_address.sin_addr.s_addr = INADDR_ANY;
+  upstream_address.sin_port = htons(8080);
+
+  struct sockaddr_in upstream_address_2;
+  upstream_address_2.sin_family = AF_INET;
+  upstream_address_2.sin_addr.s_addr = INADDR_ANY;
+  upstream_address_2.sin_port = htons(8082);
+
+  struct sockaddr_in backends[2];
+
+  backends[0] = upstream_address;
+  backends[1] = upstream_address_2;
 
   char* request = NULL;
   char* response = NULL;
-
+  int request_number = 0;
   while (1) {
     client_socket = accept(server_socket, (struct sockaddr *)&cli_addr, &address_length);
 
@@ -95,7 +105,7 @@ int main() {
 
     // buffer now contains client request
     upstream_socket = socket(AF_INET, SOCK_STREAM, 0);
-    connect(upstream_socket, (struct sockaddr *) &client_addr, sizeof(client_addr));
+    connect(upstream_socket, (struct sockaddr_in *) &backends[request_number % 2], sizeof(backends[request_number % 2]));
     write(upstream_socket, request, strlen(request));
 
     // now recive response
@@ -109,6 +119,8 @@ int main() {
 
     free(response);
     free(request);
+
+    request_number +=1;
   }
 
   return 0;
