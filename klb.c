@@ -53,7 +53,7 @@ char* read_all_bytes(int file_descriptor, int force_read) {
   current_buffer_size = BUFFER_LENGTH - 1;
   while (bytes_read > 0) {
       temp = malloc(sizeof(char) * (current_buffer_size + bytes_read));
-      bzero(temp, sizeof(temp));
+      bzero(temp, strlen(temp));
       if (data != NULL) {
         strcat(temp, data);
       }
@@ -84,8 +84,8 @@ int main() {
   client_addr.sin_addr.s_addr = INADDR_ANY;
   client_addr.sin_port = htons(8080);
 
-  char* request;
-  char* response;
+  char* request = NULL;
+  char* response = NULL;
 
   while (1) {
     client_socket = accept(server_socket, (struct sockaddr *)&cli_addr, &address_length);
