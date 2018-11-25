@@ -72,7 +72,7 @@ char* read_all_bytes(int file_descriptor, int force_read) {
     return data;
 }
 
-struct addrinfo * get_server_address(char hostname[]) {
+struct sockaddr_in * get_server_address(char hostname[]) {
   struct addrinfo * result;
   struct addrinfo hints;
 
@@ -87,7 +87,7 @@ struct addrinfo * get_server_address(char hostname[]) {
     perror("Error:");
     exit(-1);
   }
-  return result;
+  return (struct sockaddr_in *) result->ai_addr;
 }
 
 int main(int argc, char *argv[]) {
@@ -98,15 +98,14 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in cli_addr;
   socklen_t address_length = sizeof(cli_addr);
 
-  struct sockaddr_in upstream_address;
-  upstream_address.sin_family = AF_INET;
-  upstream_address.sin_addr.s_addr = INADDR_ANY;
-  upstream_address.sin_port = htons(8080);
+  struct sockaddr_in *backends;
+  backends = malloc(sizeof(struct sockaddr_in) * (argc - 1));
 
-  struct sockaddr_in backends[2];
-  struct addrinfo * address = get_server_address(argv[1]);
-  backends[0] = upstream_address;
-  backends[1] = *((struct sockaddr_in *) address->ai_addr);
+  int current_backend = 0;
+  while (current_backend < argc) {
+    backends[current_backend] = *get_server_address(argv[current_backend + 1]);
+    current_backend +=1;
+  }
 
   char* request = NULL;
   char* response = NULL;
@@ -119,7 +118,7 @@ int main(int argc, char *argv[]) {
 
     // buffer now contains client request
     upstream_socket = socket(AF_INET, SOCK_STREAM, 0);
-    connect(upstream_socket, (struct sockaddr_in *) &backends[request_number % 2], sizeof(backends[request_number % 2]));
+    connect(upstream_socket, (struct sockaddr_in *) &backends[request_number % (argc - 1)], sizeof(backends[request_number % (argc - 1)]));
     write(upstream_socket, request, strlen(request));
 
     // now recive response
