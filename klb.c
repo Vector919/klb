@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <strings.h>
 #include <errno.h>
+#include <netdb.h>
 
 #define BUFFER_LENGTH 256
 
@@ -71,7 +72,25 @@ char* read_all_bytes(int file_descriptor, int force_read) {
     return data;
 }
 
-int main() {
+struct addrinfo * get_server_address(char hostname[]) {
+  struct addrinfo * result;
+  struct addrinfo hints;
+
+  memset(&hints, 0, sizeof hints);
+
+  hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+  hints.ai_socktype = SOCK_STREAM;
+
+  int return_value = getaddrinfo(hostname, "http", &hints, &result);
+  if (return_value != 0) {
+    printf("Failed to get address info with error code %d", return_value);
+    perror("Error:");
+    exit(-1);
+  }
+  return result;
+}
+
+int main(int argc, char *argv[]) {
   int server_socket = initialize_server(9002);
   int client_socket;
   int upstream_socket;
@@ -84,15 +103,10 @@ int main() {
   upstream_address.sin_addr.s_addr = INADDR_ANY;
   upstream_address.sin_port = htons(8080);
 
-  struct sockaddr_in upstream_address_2;
-  upstream_address_2.sin_family = AF_INET;
-  upstream_address_2.sin_addr.s_addr = INADDR_ANY;
-  upstream_address_2.sin_port = htons(8082);
-
   struct sockaddr_in backends[2];
-
+  struct addrinfo * address = get_server_address(argv[1]);
   backends[0] = upstream_address;
-  backends[1] = upstream_address_2;
+  backends[1] = *((struct sockaddr_in *) address->ai_addr);
 
   char* request = NULL;
   char* response = NULL;
