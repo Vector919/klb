@@ -7,6 +7,6 @@ command line
 
 Example:
 ```bash
-./klb localhost, www.google.com
+./klb localhost www.google.com
 # balances traffic between localhost and google
 ```
