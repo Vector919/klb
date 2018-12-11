@@ -91,7 +91,8 @@ struct sockaddr_in * get_server_address(char hostname[]) {
 }
 
 int main(int argc, char *argv[]) {
-  int server_socket = initialize_server(9002);
+  int server_port = atoi(argv[1]);
+  int server_socket = initialize_server(server_port);
   int client_socket;
   int upstream_socket;
 
@@ -99,11 +100,11 @@ int main(int argc, char *argv[]) {
   socklen_t address_length = sizeof(cli_addr);
 
   struct sockaddr_in *backends;
-  backends = malloc(sizeof(struct sockaddr_in) * (argc - 1));
+  backends = malloc(sizeof(struct sockaddr_in) * (argc - 2));
 
   int current_backend = 0;
-  while (current_backend < argc) {
-    backends[current_backend] = *get_server_address(argv[current_backend + 1]);
+  while (current_backend < (argc - 2)) {
+    backends[current_backend] = *get_server_address(argv[current_backend + 2]);
     current_backend +=1;
   }
 
@@ -118,7 +119,7 @@ int main(int argc, char *argv[]) {
 
     // buffer now contains client request
     upstream_socket = socket(AF_INET, SOCK_STREAM, 0);
-    connect(upstream_socket, (struct sockaddr_in *) &backends[request_number % (argc - 1)], sizeof(backends[request_number % (argc - 1)]));
+    connect(upstream_socket, (struct sockaddr_in *) &backends[request_number % (argc - 2)], sizeof(backends[request_number % (argc - 1)]));
     write(upstream_socket, request, strlen(request));
 
     // now recive response

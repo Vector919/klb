@@ -7,6 +7,8 @@ command line
 
 Example:
 ```bash
-./klb localhost www.google.com
+./klb 9000 localhost www.google.com
 # balances traffic between localhost and google
+
+> Started server on port 9000!
 ```
