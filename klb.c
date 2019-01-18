@@ -72,16 +72,16 @@ char* read_all_bytes(int file_descriptor, int force_read) {
     return data;
 }
 
-struct sockaddr_in * get_server_address(char hostname[]) {
+struct sockaddr_in * get_server_address(char hostname[], char port[]) {
   struct addrinfo * result;
   struct addrinfo hints;
 
   memset(&hints, 0, sizeof hints);
 
-  hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+  hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
-  int return_value = getaddrinfo(hostname, "http", &hints, &result);
+  int return_value = getaddrinfo(hostname, port, &hints, &result);
   if (return_value != 0) {
     printf("Failed to get address info with error code %d", return_value);
     perror("Error:");
@@ -104,8 +104,8 @@ int main(int argc, char *argv[]) {
 
   int current_backend = 0;
   while (current_backend < (argc - 2)) {
-    backends[current_backend] = *get_server_address(argv[current_backend + 2]);
-    current_backend +=1;
+    backends[current_backend] = *get_server_address(argv[current_backend + 2], argv[current_backend + 3]);
+    current_backend +=2;
   }
 
   char* request = NULL;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 
     // buffer now contains client request
     upstream_socket = socket(AF_INET, SOCK_STREAM, 0);
-    connect(upstream_socket, (struct sockaddr_in *) &backends[request_number % (argc - 2)], sizeof(backends[request_number % (argc - 1)]));
+    connect(upstream_socket, (struct sockaddr_in *) &backends[request_number % ((argc - 2) / 2)], sizeof(backends[request_number % (argc - 1)]));
     write(upstream_socket, request, strlen(request));
 
     // now recive response
