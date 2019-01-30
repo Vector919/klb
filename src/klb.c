@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
   int current_backend = 0;
   int backend_count = 0;
   while (current_backend < (argc - 2)) {
+    // Each argument contains a host and port pair
     backends[current_backend] = *get_server_address(argv[current_backend + 2], argv[current_backend + 3]);
     current_backend +=2;
     backend_count +=1;
