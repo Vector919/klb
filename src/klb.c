@@ -17,6 +17,10 @@ struct server_configuration {
   int backend_count;
 };
 
+/**
+ * Takes a Hostname and port, and returns a network address
+ * for use as a backend or server location
+ */
 struct sockaddr_in * get_server_address(char hostname[], char port[]) {
   struct addrinfo * result;
   struct addrinfo hints;
@@ -35,10 +39,29 @@ struct sockaddr_in * get_server_address(char hostname[], char port[]) {
   return (struct sockaddr_in *) result->ai_addr;
 }
 
+/**
+ *  Converts the command line arguments into a struct containing all
+ *  of the necessary information to run the server.
+ *
+ *  Params:
+ *    char* arguments: List of command line arguments (usually argv)
+ *    int argument_count: number of arguments (argc)
+ */
 struct server_configuration parse_commandline_configuration(char* arguments[], int argument_count) {
   struct server_configuration config;
 
   config.frontend_port = atoi(arguments[1]); // the server port
+
+  // only 1 argument means we have not passed any server information
+  if (argument_count == 1) {
+    printf("Must specify server port! \n");
+    exit(-1);
+  }
+
+  if (argument_count < 4) {
+    printf("Must specify at least one backend (host and port), to balance between\n");
+    exit(-1);
+  }
 
   // don't count the first 2 arguments as backends (executable name and server port)
   // Every backend should have 2 associated arguments (host, port)

@@ -7,6 +7,9 @@
 #include "io_utils.h"
 #include "server.h"
 
+/**
+ * Prepare the server to recieve requests on a given port.
+ **/
 int initialize_server(int port) {
   int socket_fd;
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -37,6 +40,10 @@ int initialize_server(int port) {
   return socket_fd;
 }
 
+/**
+ * Main server loop, initializes the server, and then waits for requests
+ * and processes them.
+ **/
 void run_server(int port, struct sockaddr_in *backends, int backend_count) {
   int server_socket = initialize_server(port);
   int client_socket;
