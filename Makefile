@@ -2,4 +2,4 @@
 
 
 build:
-	cc src/klb.c src/server.c src/io_utils.c -o klb
+	cc src/klb.c src/server.c src/io_utils.c -pthread -o klb

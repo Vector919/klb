@@ -3,10 +3,18 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <string.h>
 
 #include "io_utils.h"
 #include "server.h"
 
+struct request {
+  int client_socket;
+  int request_number;
+  int backend_count;
+  struct sockaddr_in *backends;
+};
 /**
  * Prepare the server to recieve requests on a given port.
  **/
@@ -40,6 +48,30 @@ int initialize_server(int port) {
   return socket_fd;
 }
 
+void process_request(struct request* req) {
+
+
+  struct read_response request_data = read_all_bytes(req->client_socket, 0);
+  printf("Request: === \n %s \n", request_data.data);
+
+  // buffer now contains client request
+  int upstream_socket = socket(AF_INET, SOCK_STREAM, 0);
+  connect(upstream_socket, (struct sockaddr_in *) &(*req).backends[req->request_number % req->backend_count], sizeof(req->backends[req->request_number % req->backend_count]));
+  write(upstream_socket, request_data.data, request_data.length);
+
+  // now recive response
+  struct read_response response = read_all_bytes(upstream_socket, 1);
+
+  close(upstream_socket);
+
+  write(req->client_socket, response.data, response.length);
+  close(req->client_socket);
+
+  free(response.data);
+  free(request_data.data);
+  free(req);
+}
+
 /**
  * Main server loop, initializes the server, and then waits for requests
  * and processes them.
@@ -55,27 +87,21 @@ void run_server(int port, struct sockaddr_in *backends, int backend_count) {
   socklen_t address_length = sizeof(cli_addr);
 
   int request_number = 0;
+  pthread_t* thread;
+
+  struct request *req;
   while (1) {
     client_socket = accept(server_socket, (struct sockaddr *)&cli_addr, &address_length);
 
-    request = read_all_bytes(client_socket, 0);
-    printf("Request: === \n %s \n", request.data);
+    // Lock the request until we can copy it
+    req = malloc(sizeof(struct request));
+    req->client_socket = client_socket;
+    req->backend_count = backend_count;
+    req->backends = backends;
+    req->request_number = request_number;
 
-    // buffer now contains client request
-    upstream_socket = socket(AF_INET, SOCK_STREAM, 0);
-    connect(upstream_socket, (struct sockaddr_in *) &backends[request_number % backend_count], sizeof(backends[request_number % backend_count]));
-    write(upstream_socket, request.data, request.length);
+    pthread_create(&thread, NULL, &process_request, req);
 
-    // now recive response
-    response = read_all_bytes(upstream_socket, 1);
-
-    close(upstream_socket);
-
-    write(client_socket, response.data, response.length);
-    close(client_socket);
-
-    free(response.data);
-    free(request.data);
 
     request_number +=1;
   }
