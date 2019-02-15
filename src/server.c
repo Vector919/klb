@@ -89,11 +89,10 @@ void run_server(int port, struct sockaddr_in *backends, int backend_count) {
   int request_number = 0;
   pthread_t* thread;
 
-  struct request *req;
+  struct request* req;
   while (1) {
     client_socket = accept(server_socket, (struct sockaddr *)&cli_addr, &address_length);
 
-    // Lock the request until we can copy it
     req = malloc(sizeof(struct request));
     req->client_socket = client_socket;
     req->backend_count = backend_count;
@@ -101,7 +100,6 @@ void run_server(int port, struct sockaddr_in *backends, int backend_count) {
     req->request_number = request_number;
 
     pthread_create(&thread, NULL, &process_request, req);
-
 
     request_number +=1;
   }

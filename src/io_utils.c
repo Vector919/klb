@@ -14,9 +14,9 @@ struct read_response {
 * Consume all data from a file descriptor into a struct containing the data and it's length
 *   Params:
 *     int file_descriptor: the ID of the file descriptor
-*     int force_read: A boolean indicating whether to try and read after we've reached the end of the data
+*     char force_read: A boolean indicating whether to try and read after we've reached the end of the data
 **/
-struct read_response read_all_bytes(int file_descriptor, int force_read) {
+struct read_response read_all_bytes(int file_descriptor, char force_read) {
   int bytes_read;
   int current_buffer_size;
 
