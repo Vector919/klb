@@ -7,9 +7,12 @@
 #include <strings.h>
 #include <errno.h>
 #include <netdb.h>
+#include <fcntl.h>
 
 #include "server.h"
 #include "io_utils.h"
+
+#define NEWLINE "\n"
 
 struct server_configuration {
   int frontend_port; // The port that the KLB server will run on
@@ -38,6 +41,64 @@ struct sockaddr_in * get_server_address(char hostname[], char port[]) {
   }
   return (struct sockaddr_in *) result->ai_addr;
 }
+/**
+ * Parses a configuration file given it's filename.
+ * Returns a server_configuration struct.
+ */
+struct server_configuration parse_file_configuration(char* filename) {
+  struct server_configuration sc;
+  int backend_count = 0;
+  int file_descriptor = open(filename, O_RDONLY);
+  struct read_response r = read_all_bytes(file_descriptor, 0);
+
+  // Count the number of backends by looking for the ':' character
+  // Should be present since the config file uses the form
+  // <host>:<port>
+  char *seperator = ":";
+  struct sockaddr_in *backends;
+  for (int i = 0; i < strlen(r.data); i++) {
+    if(r.data[i] == *seperator) {
+      backend_count +=1;
+    }
+  }
+  backends = malloc(sizeof(struct sockaddr_in) * backend_count);
+
+  char *line;
+  char *token;
+  char *linesave; // Needed for the multiple different calls to strtok
+
+  char *hostname;
+  char *port;
+
+  int current_backend = 0;
+
+  // Parse the file contents line by line
+  line = strtok_r(r.data, NEWLINE, &linesave);
+  while (line != NULL) {
+    // Each line either consists of a variable (var=value)
+    // Or just a backend (host:port)
+    // right now, "port" is the onl
+    token = strtok(line, "=");
+    while (token != NULL) {
+      if (strcmp(token, "port") == 0) {
+        sc.frontend_port = atoi(strtok(NULL, "="));
+      } else {
+        hostname = strtok(line, ":");
+        port = strtok(NULL, ":");
+        if (hostname != NULL && port != NULL) {
+          backends[current_backend] = *get_server_address(hostname, port);
+          current_backend +=1;
+        }
+      }
+      token = strtok(NULL, "=");
+    }
+
+    line = strtok_r(NULL, NEWLINE, &linesave);
+  }
+  sc.backends = backends;
+  sc.backend_count = current_backend;
+  return sc;
+}
 
 /**
  *  Converts the command line arguments into a struct containing all
@@ -49,6 +110,11 @@ struct sockaddr_in * get_server_address(char hostname[], char port[]) {
  */
 struct server_configuration parse_commandline_configuration(char* arguments[], int argument_count) {
   struct server_configuration config;
+
+  // Allow users to load the config from a file with the --file <filename> option
+  if (strcmp(arguments[1], "--file") == 0) {
+    return parse_file_configuration(arguments[2]);
+  }
 
   config.frontend_port = atoi(arguments[1]); // the server port
 
@@ -62,6 +128,8 @@ struct server_configuration parse_commandline_configuration(char* arguments[], i
     printf("Must specify at least one backend (host and port), to balance between\n");
     exit(-1);
   }
+
+
 
   // don't count the first 2 arguments as backends (executable name and server port)
   // Every backend should have 2 associated arguments (host, port)

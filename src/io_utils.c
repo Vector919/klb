@@ -32,6 +32,7 @@ struct read_response read_all_bytes(int file_descriptor, char force_read) {
       temp = malloc(sizeof(char) * (current_buffer_size + bytes_read));
       if (data != NULL) {
         memcpy(temp, data, sizeof(char) * current_buffer_size);
+        free(data);
       }
       memcpy(&temp[current_buffer_size], &buffer, bytes_read);
 
